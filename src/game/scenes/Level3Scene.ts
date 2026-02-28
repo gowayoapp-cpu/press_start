@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { SUPER_JUMP_MULTIPLIER, TOTAL_PARTS_REQUIRED } from '../config';
+import { SUPER_JUMP_MULTIPLIER } from '../config';
 import { createControls, type Controls } from '../input/controls';
 import { Carrot } from '../objects/Carrot';
+import { Collectible } from '../objects/Collectible';
 import { FloatingRobot } from '../objects/FloatingRobot';
 import { Player } from '../objects/Player';
 import { RocketGoal } from '../objects/RocketGoal';
@@ -12,13 +13,14 @@ import {
   enableSuperJump,
   getRunState,
   loseLife as loseRunStateLife,
+  restartLevelFromBeginning,
   resetPowerupsForLevel,
-  resetRunState,
   setLevel,
 } from '../utils/runState';
 
 interface Level3Data {
   fromDeath?: boolean;
+  fromOutOfLives?: boolean;
 }
 
 export class Level3Scene extends Phaser.Scene {
@@ -29,6 +31,7 @@ export class Level3Scene extends Phaser.Scene {
   private lavaPools!: Phaser.Physics.Arcade.Group;
   private floatingGuards!: Phaser.GameObjects.Group;
   private carrots!: Phaser.Physics.Arcade.Group;
+  private levelParts!: Phaser.Physics.Arcade.Group;
   private rocket!: RocketGoal;
   private superJumpItem?: SuperJumpItem;
   private statusText!: Phaser.GameObjects.Text;
@@ -37,6 +40,8 @@ export class Level3Scene extends Phaser.Scene {
   private lavaEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
   private transitioning = false;
   private pausedByUser = false;
+  private levelPartsCollected = 0;
+  private readonly levelPartsTarget = 4;
 
   public constructor() {
     super('Level3Scene');
@@ -46,6 +51,9 @@ export class Level3Scene extends Phaser.Scene {
     devSceneLifecycle(this, 'create');
     this.transitioning = false;
     this.pausedByUser = false;
+    this.physics.world.resume();
+    this.time.timeScale = 1;
+    this.levelPartsCollected = 0;
     setLevel(3);
     resetPowerupsForLevel();
 
@@ -74,14 +82,16 @@ export class Level3Scene extends Phaser.Scene {
 
     this.floatingGuards = this.add.group({ runChildUpdate: true });
     this.spawnFloatingGuard(820, 285, 690, 980, 92);
-    this.spawnFloatingGuard(1400, 245, 1270, 1560, 98);
+    this.spawnFloatingGuard(1400, 245, 1270, 1560, 92);
     this.spawnFloatingGuard(2060, 190, 1920, 2230, 112);
     this.spawnFloatingGuard(2710, 145, 2580, 2850, 118);
 
     this.carrots = this.physics.add.group();
     this.spawnCarrots();
+    this.levelParts = this.physics.add.group();
+    this.spawnLevelParts();
 
-    this.superJumpItem = new SuperJumpItem(this, 1600, 236);
+    this.superJumpItem = new SuperJumpItem(this, 620, 348);
     this.rocket = new RocketGoal(this, worldWidth - 102, 98);
 
     this.physics.add.overlap(this.player, this.floatingGuards, () => this.handleEnemyHit());
@@ -89,6 +99,9 @@ export class Level3Scene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.lavaPools, () => this.handleLavaHit());
     this.physics.add.overlap(this.player, this.carrots, (_player, carrot) => {
       this.collectCarrot(carrot as Carrot);
+    });
+    this.physics.add.overlap(this.player, this.levelParts, (_player, part) => {
+      this.collectLevelPart(part as Collectible);
     });
     this.physics.add.overlap(this.player, this.rocket, () => this.tryFinishGame());
 
@@ -126,6 +139,8 @@ export class Level3Scene extends Phaser.Scene {
 
     if (data.fromDeath) {
       this.statusText.setText('Respawned. Reclaim super jump to clear the ridge.');
+    } else if (data.fromOutOfLives) {
+      this.statusText.setText('Out of lives. Level restarted with 5 lives.');
     }
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -159,11 +174,16 @@ export class Level3Scene extends Phaser.Scene {
     }
 
     const runState = getRunState();
-    this.rocket.setActivated(runState.partsCollected >= TOTAL_PARTS_REQUIRED);
+    this.rocket.setActivated(this.levelPartsCollected >= this.levelPartsTarget);
+    const remainingParts = Math.max(0, this.levelPartsTarget - this.levelPartsCollected);
     this.statusText.setText(
-      runState.superJumpActive
-        ? 'Super Jump active. Reach the launch ridge.'
-        : 'Claim the Golden Star to gain Super Jump.',
+      this.rocket.isActivated()
+        ? runState.superJumpActive
+          ? 'Super Jump active. Rocket ready!'
+          : 'Rocket ready. Reach the launch ridge.'
+        : runState.superJumpActive
+          ? `Super Jump active. Parts ${this.levelPartsCollected}/${this.levelPartsTarget}.`
+          : `Collect ${remainingParts} more local part(s).`,
     );
   }
 
@@ -287,13 +307,27 @@ export class Level3Scene extends Phaser.Scene {
 
   private spawnCarrots(): void {
     const positions = [
-      { x: 740, y: 316 },
+      { x: 400, y: 368 },
       { x: 2240, y: 222 },
       { x: 2900, y: 132 },
     ];
     positions.forEach((position) => {
       const carrot = new Carrot(this, position.x, position.y);
       this.carrots.add(carrot);
+    });
+  }
+
+  private spawnLevelParts(): void {
+    const positions = [
+      { x: 360, y: 368 },
+      { x: 690, y: 318 },
+      { x: 1040, y: 282 },
+      { x: 1450, y: 250 },
+    ];
+
+    positions.forEach((position) => {
+      const part = new Collectible(this, position.x, position.y);
+      this.levelParts.add(part);
     });
   }
 
@@ -324,6 +358,18 @@ export class Level3Scene extends Phaser.Scene {
     });
   }
 
+  private collectLevelPart(part: Collectible): void {
+    if (!part.active || this.transitioning) {
+      return;
+    }
+
+    part.collect();
+    this.levelPartsCollected += 1;
+    this.statusText.setText(
+      `Level 3 parts: ${this.levelPartsCollected}/${this.levelPartsTarget}`,
+    );
+  }
+
   private handleEnemyHit(): void {
     this.loseLife('Floating guard impact.');
   }
@@ -346,11 +392,13 @@ export class Level3Scene extends Phaser.Scene {
     });
 
     if (remainingLives <= 0) {
-      this.transitionToMenuAfterGameOver();
+      this.handleOutOfLives();
       return;
     }
 
     this.transitioning = true;
+    this.physics.world.resume();
+    this.time.timeScale = 1;
     this.player.grantInvulnerability(750);
     this.cameras.main.flash(160, 255, 80, 40);
     this.statusText.setText(reason);
@@ -364,9 +412,10 @@ export class Level3Scene extends Phaser.Scene {
       return;
     }
 
-    const parts = getRunState().partsCollected;
-    if (parts < TOTAL_PARTS_REQUIRED || !this.rocket.isActivated()) {
-      this.statusText.setText(`Rocket needs ${TOTAL_PARTS_REQUIRED - parts} more part(s).`);
+    if (!this.rocket.isActivated()) {
+      this.statusText.setText(
+        `Rocket needs ${Math.max(0, this.levelPartsTarget - this.levelPartsCollected)} more local part(s).`,
+      );
       return;
     }
 
@@ -384,20 +433,18 @@ export class Level3Scene extends Phaser.Scene {
     });
   }
 
-  private transitionToMenuAfterGameOver(): void {
+  private handleOutOfLives(): void {
     this.transitioning = true;
     this.pausedByUser = false;
     this.physics.world.resume();
-    devLog('Level3Scene:transitionToMenuAfterGameOver', {
+    this.time.timeScale = 1;
+    devLog('Level3Scene:handleOutOfLives', {
       activeScenes: activeSceneKeys(this),
     });
-
-    this.time.delayedCall(0, () => {
-      resetRunState();
-      if (this.scene.isActive('UIScene')) {
-        this.scene.stop('UIScene');
-      }
-      this.safeSceneStart('MenuScene');
+    this.statusText.setText('Out of lives! Restarting Level 3...');
+    restartLevelFromBeginning(3);
+    this.time.delayedCall(320, () => {
+      this.scene.restart({ fromOutOfLives: true });
     });
   }
 

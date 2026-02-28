@@ -12,13 +12,14 @@ import {
   addPart,
   getRunState,
   loseLife as loseRunStateLife,
-  resetRunState,
+  restartLevelFromBeginning,
   resetPowerupsForLevel,
   setLevel,
 } from '../utils/runState';
 
 interface Level2Data {
   fromDeath?: boolean;
+  fromOutOfLives?: boolean;
 }
 
 export class Level2Scene extends Phaser.Scene {
@@ -43,6 +44,8 @@ export class Level2Scene extends Phaser.Scene {
     devSceneLifecycle(this, 'create');
     this.transitioning = false;
     this.pausedByUser = false;
+    this.physics.world.resume();
+    this.time.timeScale = 1;
     setLevel(2);
     resetPowerupsForLevel();
 
@@ -118,6 +121,8 @@ export class Level2Scene extends Phaser.Scene {
 
     if (data.fromDeath) {
       this.statusText.setText('Re-entry complete. Try again.');
+    } else if (data.fromOutOfLives) {
+      this.statusText.setText('Out of lives. Level restarted with 5 lives.');
     }
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -281,11 +286,13 @@ export class Level2Scene extends Phaser.Scene {
     });
 
     if (remainingLives <= 0) {
-      this.transitionToMenuAfterGameOver();
+      this.handleOutOfLives();
       return;
     }
 
     this.transitioning = true;
+    this.physics.world.resume();
+    this.time.timeScale = 1;
     this.player.grantInvulnerability(750);
     this.cameras.main.flash(140, 255, 110, 110);
     this.statusText.setText(reason);
@@ -316,20 +323,18 @@ export class Level2Scene extends Phaser.Scene {
     });
   }
 
-  private transitionToMenuAfterGameOver(): void {
+  private handleOutOfLives(): void {
     this.transitioning = true;
     this.pausedByUser = false;
     this.physics.world.resume();
+    this.time.timeScale = 1;
     devLog('Level2Scene:transitionToMenuAfterGameOver', {
       activeScenes: activeSceneKeys(this),
     });
-
-    this.time.delayedCall(0, () => {
-      resetRunState();
-      if (this.scene.isActive('UIScene')) {
-        this.scene.stop('UIScene');
-      }
-      this.safeSceneStart('MenuScene');
+    this.statusText.setText('Out of lives! Restarting Level 2...');
+    restartLevelFromBeginning(2);
+    this.time.delayedCall(320, () => {
+      this.scene.restart({ fromOutOfLives: true });
     });
   }
 

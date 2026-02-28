@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import {
   BASE_JUMP_MULTIPLIER,
   INITIAL_LIVES,
+  LEVEL1_PARTS_REQUIRED,
   MAX_LIVES,
   TOTAL_PARTS_REQUIRED,
 } from '../constants';
@@ -72,6 +73,15 @@ export function addLife(amount = 1): number {
   return state.lives;
 }
 
+export function resetLivesToMax(): number {
+  state = {
+    ...state,
+    lives: state.maxLives,
+  };
+  emitStateChange();
+  return state.lives;
+}
+
 export function addPart(amount = 1): number {
   state = {
     ...state,
@@ -91,6 +101,22 @@ export function setLevel(level: 1 | 2 | 3): void {
     currentLevel: level,
   };
   emitStateChange();
+}
+
+export function restartLevelFromBeginning(level: 1 | 2 | 3): RunState {
+  const basePartsForLevel =
+    level === 1 ? 0 : level === 2 ? LEVEL1_PARTS_REQUIRED : TOTAL_PARTS_REQUIRED;
+
+  state = {
+    ...state,
+    lives: state.maxLives,
+    currentLevel: level,
+    partsCollected: basePartsForLevel,
+    jumpMultiplier: BASE_JUMP_MULTIPLIER,
+    superJumpActive: false,
+  };
+  emitStateChange();
+  return getRunState();
 }
 
 export function enableSuperJump(multiplier: number): void {
