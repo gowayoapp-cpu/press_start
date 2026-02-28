@@ -116,5 +116,96 @@ export class BootScene extends Phaser.Scene {
       g.generateTexture('rocket_on', 48, 98);
       g.destroy();
     }
+
+    if (!this.textures.exists('carrot')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xf97316, 1);
+      g.fillTriangle(10, 2, 2, 22, 18, 22);
+      g.fillStyle(0x1f9d52, 1);
+      g.fillTriangle(7, 0, 10, 8, 4, 7);
+      g.fillTriangle(13, 0, 10, 8, 16, 7);
+      g.generateTexture('carrot', 20, 24);
+      g.destroy();
+    }
+
+    if (!this.textures.exists('super_jump_item')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xf8d74b, 1);
+      g.beginPath();
+      g.moveTo(12, 0);
+      g.lineTo(15, 8);
+      g.lineTo(24, 8);
+      g.lineTo(17, 14);
+      g.lineTo(20, 24);
+      g.lineTo(12, 18);
+      g.lineTo(4, 24);
+      g.lineTo(7, 14);
+      g.lineTo(0, 8);
+      g.lineTo(9, 8);
+      g.closePath();
+      g.fillPath();
+      g.lineStyle(2, 0xfff8cf, 1);
+      g.strokePath();
+      g.generateTexture('super_jump_item', 24, 24);
+      g.destroy();
+    }
+
+    if (!this.textures.exists('floating_robot')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xf97316, 1);
+      g.fillRoundedRect(2, 6, 34, 18, 7);
+      g.fillStyle(0x2f1010, 1);
+      g.fillCircle(12, 15, 3);
+      g.fillCircle(26, 15, 3);
+      g.fillStyle(0xf7f7f7, 0.75);
+      g.fillRoundedRect(12, 0, 14, 6, 3);
+      g.fillStyle(0xffc857, 0.95);
+      g.fillEllipse(19, 28, 24, 7);
+      g.generateTexture('floating_robot', 38, 32);
+      g.destroy();
+    }
+
+    if (!this.textures.exists('lava')) {
+      const g = this.add.graphics();
+      g.fillStyle(0x7a1106, 1);
+      g.fillRect(0, 0, 64, 24);
+      g.fillStyle(0xf97316, 0.9);
+      g.fillRect(0, 0, 64, 9);
+      g.fillStyle(0xfdba74, 0.6);
+      g.fillRect(0, 0, 64, 3);
+      g.generateTexture('lava', 64, 24);
+      g.destroy();
+    }
+
+    if (!this.textures.exists('lava_pool')) {
+      const g = this.add.graphics();
+      g.fillStyle(0x6b0d05, 1);
+      g.fillRoundedRect(0, 0, 64, 20, 8);
+      g.fillStyle(0xfb923c, 0.95);
+      g.fillRoundedRect(1, 1, 62, 8, 8);
+      g.fillStyle(0xfecba1, 0.5);
+      g.fillRoundedRect(8, 2, 14, 3, 2);
+      g.fillRoundedRect(30, 2, 18, 3, 2);
+      g.generateTexture('lava_pool', 64, 20);
+      g.destroy();
+    }
+
+    if (!this.textures.exists('smoke_dot')) {
+      const g = this.add.graphics();
+      g.fillStyle(0x9ca3af, 0.85);
+      g.fillCircle(4, 4, 4);
+      g.generateTexture('smoke_dot', 8, 8);
+      g.destroy();
+    }
+
+    if (!this.textures.exists('lava_bubble')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xfb923c, 0.95);
+      g.fillCircle(5, 5, 5);
+      g.fillStyle(0xfed7aa, 0.5);
+      g.fillCircle(3, 3, 2);
+      g.generateTexture('lava_bubble', 10, 10);
+      g.destroy();
+    }
   }
 }
