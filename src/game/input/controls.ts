@@ -86,6 +86,9 @@ export function createControls(scene: Phaser.Scene): Controls {
       pointerToAction.set(pointer.id, action);
       circle.setFillStyle(fillColors[action], 0.58);
     });
+    zone.on('pointerout', (pointer: Phaser.Input.Pointer) => {
+      releasePointer(pointer);
+    });
 
     layer.add([circle, label, zone]);
     return {
@@ -179,6 +182,13 @@ export function createControls(scene: Phaser.Scene): Controls {
   let jumpWasDown = false;
   let pauseWasDown = false;
 
+  const isKeyJustDown = (key: Phaser.Input.Keyboard.Key | undefined): boolean => {
+    if (!key) {
+      return false;
+    }
+    return Phaser.Input.Keyboard.JustDown(key);
+  };
+
   const getState = (): ControlsState => {
     const leftPressed =
       (cursors?.left.isDown ?? false) ||
@@ -188,22 +198,32 @@ export function createControls(scene: Phaser.Scene): Controls {
       (cursors?.right.isDown ?? false) ||
       (keys?.right.isDown ?? false) ||
       pressedPointers.right.size > 0;
-    const jumpDown =
+    const keyboardJumpDown =
       (cursors?.up.isDown ?? false) ||
       (cursors?.space.isDown ?? false) ||
       (keys?.jump.isDown ?? false) ||
-      (keys?.jump2.isDown ?? false) ||
-      pressedPointers.jump.size > 0;
-    const pauseDown =
-      (keys?.pause.isDown ?? false) ||
-      (keys?.pause2.isDown ?? false) ||
-      pressedPointers.pause.size > 0;
+      (keys?.jump2.isDown ?? false);
+    const touchJumpDown = pressedPointers.jump.size > 0;
+    const jumpDown = keyboardJumpDown || touchJumpDown;
+
+    const touchPauseDown = pressedPointers.pause.size > 0;
 
     const horizontal = (leftPressed ? -1 : 0) + (rightPressed ? 1 : 0);
-    const jumpJustPressed = jumpDown && !jumpWasDown;
-    const pauseJustPressed = pauseDown && !pauseWasDown;
-    jumpWasDown = jumpDown;
-    pauseWasDown = pauseDown;
+    const keyboardJumpJustPressed =
+      isKeyJustDown(cursors?.up) ||
+      isKeyJustDown(cursors?.space) ||
+      isKeyJustDown(keys?.jump) ||
+      isKeyJustDown(keys?.jump2);
+    const keyboardPauseJustPressed = isKeyJustDown(keys?.pause) || isKeyJustDown(keys?.pause2);
+
+    const touchJumpJustPressed = touchJumpDown && !jumpWasDown;
+    const touchPauseJustPressed = touchPauseDown && !pauseWasDown;
+
+    const jumpJustPressed = keyboardJumpJustPressed || touchJumpJustPressed;
+    const pauseJustPressed = keyboardPauseJustPressed || touchPauseJustPressed;
+
+    jumpWasDown = touchJumpDown;
+    pauseWasDown = touchPauseDown;
 
     return {
       horizontal,
