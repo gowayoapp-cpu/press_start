@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { SUPER_JUMP_MULTIPLIER } from '../config';
 import { createControls, type Controls } from '../input/controls';
 import { Carrot } from '../objects/Carrot';
 import { Collectible } from '../objects/Collectible';
@@ -7,10 +8,12 @@ import { Monkey } from '../objects/Monkey';
 import { Player } from '../objects/Player';
 import { Robot } from '../objects/Robot';
 import { RocketGoal } from '../objects/RocketGoal';
+import { SuperJumpItem } from '../objects/SuperJumpItem';
 import { TreeLog } from '../objects/TreeLog';
 import { activeSceneKeys, devLog, devSceneLifecycle } from '../utils/devLog';
 import {
   addLife,
+  enableSuperJump,
   getRunState,
   loseLives as loseRunStateLives,
   restartLevelFromBeginning,
@@ -31,10 +34,11 @@ export class Level4Scene extends Phaser.Scene {
   private robots!: Phaser.GameObjects.Group;
   private monkeys!: Phaser.GameObjects.Group;
   private levelParts!: Phaser.Physics.Arcade.Group;
-  private logs!: Phaser.Physics.Arcade.Group;
+  private logs!: Phaser.Physics.Arcade.StaticGroup;
   private mangos!: Phaser.Physics.Arcade.Group;
   private carrots!: Phaser.Physics.Arcade.Group;
   private rocket!: RocketGoal;
+  private superJumpItem?: SuperJumpItem;
   private statusText!: Phaser.GameObjects.Text;
   private pauseText!: Phaser.GameObjects.Text;
   private pollenEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
@@ -46,6 +50,7 @@ export class Level4Scene extends Phaser.Scene {
   private readonly logsTarget = 1;
   private readonly mangoPowerDurationMs = 9000;
   private mangoPowerUntil = 0;
+  private starCollected = false;
 
   public constructor() {
     super('Level4Scene');
@@ -58,6 +63,7 @@ export class Level4Scene extends Phaser.Scene {
     this.levelPartsCollected = 0;
     this.logsCollected = 0;
     this.mangoPowerUntil = 0;
+    this.starCollected = false;
     this.physics.world.resume();
     this.time.timeScale = 1;
     setLevel(4);
@@ -86,23 +92,24 @@ export class Level4Scene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.branchPlatforms);
 
     this.robots = this.add.group({ runChildUpdate: true });
-    this.spawnRobot(1020, 420, 900, 1180, 82);
-    this.spawnRobot(2380, 420, 2250, 2540, 92);
+    this.spawnRobot(1260, 420, 1140, 1390, 78);
+    this.spawnRobot(2480, 420, 2360, 2610, 90);
 
     this.monkeys = this.add.group({ runChildUpdate: true });
-    this.spawnMonkey(760, 302, 650, 900, 68);
-    this.spawnMonkey(1750, 206, 1640, 1880, 74);
-    this.spawnMonkey(2570, 166, 2460, 2700, 76);
+    this.spawnMonkey(1690, 206, 1600, 1860, 72);
+    this.spawnMonkey(2520, 166, 2420, 2680, 74);
+    this.spawnMonkey(2970, 126, 2880, 3110, 74);
 
     this.levelParts = this.physics.add.group();
     this.spawnParts();
-    this.logs = this.physics.add.group();
+    this.logs = this.physics.add.staticGroup();
     this.spawnLogs();
     this.mangos = this.physics.add.group();
     this.spawnMangos();
     this.carrots = this.physics.add.group();
     this.spawnCarrots();
 
+    this.superJumpItem = new SuperJumpItem(this, 250, 472);
     this.rocket = new RocketGoal(this, worldWidth - 110, 94);
 
     this.physics.add.overlap(this.player, this.levelParts, (_player, part) => {
@@ -120,12 +127,15 @@ export class Level4Scene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.robots, () => this.handleRobotHit());
     this.physics.add.overlap(this.player, this.monkeys, () => this.handleMonkeyHit());
     this.physics.add.overlap(this.player, this.rocket, () => this.tryFinishRun());
+    if (this.superJumpItem) {
+      this.physics.add.overlap(this.player, this.superJumpItem, () => this.collectSuperJumpItem());
+    }
 
     this.controls = createControls(this);
     this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
 
     this.statusText = this.add
-      .text(this.scale.width / 2, 60, '', {
+      .text(this.scale.width / 2, 88, '', {
         fontFamily: 'Verdana',
         fontSize: '20px',
         color: '#e7ffe8',
@@ -202,9 +212,11 @@ export class Level4Scene extends Phaser.Scene {
     const partsNeeded = Math.max(0, this.levelPartsTarget - this.levelPartsCollected);
     const logsNeeded = Math.max(0, this.logsTarget - this.logsCollected);
     this.statusText.setText(
-      mangoPowerActive
-        ? `MANGO POWER! ${mangoSeconds}s. Need P:${partsNeeded} L:${logsNeeded}.`
-        : `Collect Parts:${partsNeeded} and Logs:${logsNeeded}.`,
+      this.starCollected
+        ? mangoPowerActive
+          ? `MANGO POWER! ${mangoSeconds}s. Need P:${partsNeeded} L:${logsNeeded}.`
+          : `Collect Parts:${partsNeeded} and Logs:${logsNeeded}.`
+        : 'Grab the Star to jump higher!',
     );
   }
 
@@ -264,12 +276,14 @@ export class Level4Scene extends Phaser.Scene {
       this.createPlatform(this.platforms, x, worldHeight - 14, 320, 28, 'platform');
     }
 
-    this.createPlatform(this.branchPlatforms, 370, 402, 220, 20, 'branch');
-    this.createPlatform(this.branchPlatforms, 700, 344, 220, 20, 'branch');
-    this.createPlatform(this.branchPlatforms, 1030, 298, 220, 20, 'branch');
+    this.createPlatform(this.platforms, 520, 468, 180, 20, 'platform');
+    this.createPlatform(this.platforms, 700, 430, 170, 20, 'platform');
+    this.createPlatform(this.branchPlatforms, 860, 392, 190, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 1030, 350, 210, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 1230, 308, 210, 20, 'branch');
     this.createPlatform(this.branchPlatforms, 1360, 252, 220, 20, 'branch');
     this.createPlatform(this.branchPlatforms, 1700, 220, 240, 20, 'branch');
-    this.createPlatform(this.branchPlatforms, 2040, 268, 240, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 1980, 260, 340, 20, 'branch');
     this.createPlatform(this.branchPlatforms, 2370, 228, 220, 20, 'branch');
     this.createPlatform(this.branchPlatforms, 2700, 188, 220, 20, 'branch');
     this.createPlatform(this.branchPlatforms, 3040, 148, 220, 20, 'branch');
@@ -289,10 +303,10 @@ export class Level4Scene extends Phaser.Scene {
 
   private spawnParts(): void {
     const positions = [
-      { x: 320, y: 370 },
-      { x: 620, y: 312 },
-      { x: 980, y: 266 },
-      { x: 1660, y: 188 },
+      { x: 420, y: 438 },
+      { x: 910, y: 358 },
+      { x: 1240, y: 268 },
+      { x: 1980, y: 220 },
       { x: 2620, y: 154 },
     ];
     positions.forEach((position) => {
@@ -304,8 +318,8 @@ export class Level4Scene extends Phaser.Scene {
   private spawnLogs(): void {
     const positions = [
       { x: 260, y: 500 },
-      { x: 1460, y: 500 },
-      { x: 2540, y: 500 },
+      { x: 980, y: 360 },
+      { x: 1990, y: 228 },
     ];
     positions.forEach((position) => {
       const log = new TreeLog(this, position.x, position.y);
@@ -315,8 +329,8 @@ export class Level4Scene extends Phaser.Scene {
 
   private spawnMangos(): void {
     const positions = [
-      { x: 430, y: 366 },
-      { x: 820, y: 300 },
+      { x: 520, y: 470 },
+      { x: 980, y: 314 },
       { x: 1760, y: 196 },
       { x: 2480, y: 164 },
     ];
@@ -327,8 +341,14 @@ export class Level4Scene extends Phaser.Scene {
   }
 
   private spawnCarrots(): void {
-    const carrot = new Carrot(this, 2180, 232);
-    this.carrots.add(carrot);
+    const positions = [
+      { x: 780, y: 462 },
+      { x: 2180, y: 232 },
+    ];
+    positions.forEach((position) => {
+      const carrot = new Carrot(this, position.x, position.y);
+      this.carrots.add(carrot);
+    });
   }
 
   private spawnRobot(
@@ -391,6 +411,18 @@ export class Level4Scene extends Phaser.Scene {
         ? 'MANGO POWER! +1 life and monkey-safe boost.'
         : 'MANGO POWER! Invulnerability refreshed.',
     );
+  }
+
+  private collectSuperJumpItem(): void {
+    if (!this.superJumpItem || !this.superJumpItem.active || this.transitioning) {
+      return;
+    }
+
+    this.superJumpItem.collect();
+    this.starCollected = true;
+    enableSuperJump(SUPER_JUMP_MULTIPLIER);
+    this.cameras.main.flash(150, 255, 220, 95);
+    this.statusText.setText('Super Jump unlocked! Follow the branch steps up.');
   }
 
   private collectCarrot(carrot: Carrot): void {
