@@ -1,4 +1,9 @@
 import Phaser from 'phaser';
+import {
+  INITIAL_LIVES,
+  LEVEL1_PARTS_REQUIRED,
+  TOTAL_PARTS_REQUIRED,
+} from './constants';
 import { BootScene } from './scenes/BootScene';
 import { GameOverScene } from './scenes/GameOverScene';
 import { Level1Scene } from './scenes/Level1Scene';
@@ -10,9 +15,7 @@ import { WinScene } from './scenes/WinScene';
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 540;
 
-export const INITIAL_LIVES = 3;
-export const TOTAL_PARTS_REQUIRED = 10;
-export const LEVEL1_PARTS_REQUIRED = 5;
+export { INITIAL_LIVES, LEVEL1_PARTS_REQUIRED, TOTAL_PARTS_REQUIRED };
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,

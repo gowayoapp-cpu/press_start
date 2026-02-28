@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
-import { INITIAL_LIVES, TOTAL_PARTS_REQUIRED } from '../config';
+import { TOTAL_PARTS_REQUIRED } from '../config';
+import { devLog } from '../utils/devLog';
+import { resetRunState } from '../utils/runState';
 
 export class WinScene extends Phaser.Scene {
   public constructor() {
@@ -37,15 +39,18 @@ export class WinScene extends Phaser.Scene {
     playAgain.on('pointerup', () => this.playAgain());
 
     const menu = this.makeButton(this.scale.width / 2, 430, 'Back to Menu');
-    menu.on('pointerup', () => this.scene.start('MenuScene'));
+    menu.on('pointerup', () => {
+      resetRunState();
+      this.scene.start('MenuScene');
+    });
 
     this.input.keyboard?.once('keydown-SPACE', () => this.playAgain());
     this.input.keyboard?.once('keydown-ENTER', () => this.playAgain());
   }
 
   private playAgain(): void {
-    this.registry.set('lives', INITIAL_LIVES);
-    this.registry.set('parts', 0);
+    devLog('WinScene:playAgain');
+    resetRunState();
     if (!this.scene.isActive('UIScene')) {
       this.scene.launch('UIScene');
     }

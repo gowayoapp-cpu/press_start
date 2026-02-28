@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { INITIAL_LIVES } from '../config';
+import { devLog } from '../utils/devLog';
+import { getRunState, resetRunState } from '../utils/runState';
 
 export class GameOverScene extends Phaser.Scene {
   public constructor() {
@@ -18,7 +19,7 @@ export class GameOverScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    const partsCollected = (this.registry.get('parts') as number | undefined) ?? 0;
+    const partsCollected = getRunState().partsCollected;
     this.add
       .text(this.scale.width / 2, 235, `Parts Collected: ${partsCollected}`, {
         fontFamily: 'Verdana',
@@ -31,15 +32,18 @@ export class GameOverScene extends Phaser.Scene {
     retry.on('pointerup', () => this.retryRun());
 
     const menu = this.makeButton(this.scale.width / 2, 430, 'Back to Menu');
-    menu.on('pointerup', () => this.scene.start('MenuScene'));
+    menu.on('pointerup', () => {
+      resetRunState();
+      this.scene.start('MenuScene');
+    });
 
     this.input.keyboard?.once('keydown-SPACE', () => this.retryRun());
     this.input.keyboard?.once('keydown-ENTER', () => this.retryRun());
   }
 
   private retryRun(): void {
-    this.registry.set('lives', INITIAL_LIVES);
-    this.registry.set('parts', 0);
+    devLog('GameOverScene:retryRun');
+    resetRunState();
     if (!this.scene.isActive('UIScene')) {
       this.scene.launch('UIScene');
     }

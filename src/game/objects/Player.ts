@@ -22,9 +22,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   public move(horizontal: number, onIce: boolean): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
-    const acceleration = onIce ? 720 : 1850;
-    const drag = onIce ? 340 : 2500;
-    const maxSpeed = onIce ? 250 : 295;
+    const acceleration = onIce ? 640 : 1850;
+    const drag = onIce ? 180 : 2500;
+    const maxSpeed = onIce ? 285 : 295;
 
     body.setMaxVelocity(maxSpeed, 900);
     body.setDragX(drag);
@@ -60,6 +60,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   public grantInvulnerability(durationMs: number): void {
+    if (!this.scene || !this.scene.sys || !this.scene.time) {
+      return;
+    }
+
     this.invulnerableUntil = this.scene.time.now + durationMs;
     this.setAlpha(0.55);
     this.scene.tweens.killTweensOf(this);
@@ -82,7 +86,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   public clearInvulnerabilityVisuals(): void {
-    this.scene.tweens.killTweensOf(this);
-    this.setAlpha(1);
+    const scene = this.scene;
+    if (!scene || !scene.tweens || !scene.sys) {
+      return;
+    }
+
+    scene.tweens.killTweensOf(this);
+    if (this.active) {
+      this.setAlpha(1);
+    }
   }
 }

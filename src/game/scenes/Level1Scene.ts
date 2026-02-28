@@ -1,15 +1,20 @@
 import Phaser from 'phaser';
-import {
-  INITIAL_LIVES,
-  LEVEL1_PARTS_REQUIRED,
-  TOTAL_PARTS_REQUIRED,
-} from '../config';
+import { LEVEL1_PARTS_REQUIRED } from '../config';
 import { createControls, type Controls } from '../input/controls';
 import { Collectible } from '../objects/Collectible';
 import { Player } from '../objects/Player';
 import { Robot } from '../objects/Robot';
+import { activeSceneKeys, devLog, devSceneLifecycle } from '../utils/devLog';
+import {
+  addPart,
+  getRunState,
+  loseLife as loseRunStateLife,
+  resetRunState,
+  setLevel,
+} from '../utils/runState';
 
 interface Level1Data {
+  fromDeath?: boolean;
   resetProgress?: boolean;
 }
 
@@ -21,18 +26,26 @@ export class Level1Scene extends Phaser.Scene {
   private collectibles!: Phaser.Physics.Arcade.Group;
   private exitGate!: Phaser.Physics.Arcade.Sprite;
   private statusText!: Phaser.GameObjects.Text;
+  private pauseText!: Phaser.GameObjects.Text;
   private transitioning = false;
+  private pausedByUser = false;
 
   public constructor() {
     super('Level1Scene');
   }
 
   public create(data: Level1Data): void {
+    devSceneLifecycle(this, 'create');
     this.transitioning = false;
+    this.pausedByUser = false;
 
     if (data.resetProgress) {
-      this.registry.set('lives', INITIAL_LIVES);
-      this.registry.set('parts', 0);
+      resetRunState();
+    }
+    setLevel(1);
+
+    if (!this.scene.isActive('UIScene')) {
+      this.scene.launch('UIScene');
     }
 
     const worldWidth = 2400;
@@ -62,13 +75,9 @@ export class Level1Scene extends Phaser.Scene {
       .staticSprite(worldWidth - 120, worldHeight - 102, 'gate_closed')
       .setDepth(9);
 
-    this.physics.add.overlap(
-      this.player,
-      this.collectibles,
-      (_player, collectible) => {
-        this.collectPart(collectible as Collectible);
-      },
-    );
+    this.physics.add.overlap(this.player, this.collectibles, (_player, collectible) => {
+      this.collectPart(collectible as Collectible);
+    });
     this.physics.add.overlap(this.player, this.robots, () => this.handleRobotCollision());
     this.physics.add.overlap(this.player, this.exitGate, () => this.tryAdvanceToLevel2());
 
@@ -76,7 +85,7 @@ export class Level1Scene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
 
     this.statusText = this.add
-      .text(this.scale.width / 2, 62, '', {
+      .text(this.scale.width / 2, 60, '', {
         fontFamily: 'Verdana',
         fontSize: '20px',
         color: '#e3ecff',
@@ -85,18 +94,42 @@ export class Level1Scene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(2001);
 
+    this.pauseText = this.add
+      .text(this.scale.width / 2, this.scale.height / 2, 'Paused', {
+        fontFamily: 'Verdana',
+        fontSize: '46px',
+        color: '#ffffff',
+        stroke: '#11233f',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(2100)
+      .setVisible(false);
+
+    if (data.fromDeath) {
+      this.statusText.setText('Respawned. Stay sharp.');
+    }
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.controls.destroy();
-      this.player.clearInvulnerabilityVisuals();
+      devSceneLifecycle(this, 'shutdown');
+      this.controls?.destroy();
+      if (this.player && this.player.scene) {
+        this.player.clearInvulnerabilityVisuals();
+      }
     });
   }
 
   public update(): void {
-    if (this.transitioning) {
+    const controlsState = this.controls.getState();
+    if (controlsState.pauseJustPressed) {
+      this.togglePause();
+    }
+
+    if (this.transitioning || this.pausedByUser) {
       return;
     }
 
-    const controlsState = this.controls.getState();
     this.player.move(controlsState.horizontal, false);
     if (controlsState.jumpJustPressed) {
       this.player.jump();
@@ -106,7 +139,7 @@ export class Level1Scene extends Phaser.Scene {
       this.loseLife('The void took a life.');
     }
 
-    const parts = this.getParts();
+    const parts = getRunState().partsCollected;
     const gateReady = parts >= LEVEL1_PARTS_REQUIRED;
     this.exitGate.setTexture(gateReady ? 'gate_open' : 'gate_closed');
     this.statusText.setText(
@@ -180,12 +213,12 @@ export class Level1Scene extends Phaser.Scene {
   }
 
   private collectPart(part: Collectible): void {
-    if (!part.active) {
+    if (!part.active || this.transitioning) {
       return;
     }
+
     part.collect();
-    const next = Math.min(this.getParts() + 1, TOTAL_PARTS_REQUIRED);
-    this.registry.set('parts', next);
+    addPart();
   }
 
   private handleRobotCollision(): void {
@@ -193,21 +226,30 @@ export class Level1Scene extends Phaser.Scene {
   }
 
   private loseLife(reason: string): void {
-    if (this.player.isInvulnerable() || this.transitioning) {
+    if (this.transitioning || this.player.isInvulnerable()) {
       return;
     }
 
-    const lives = this.getLives() - 1;
-    this.registry.set('lives', lives);
+    const previousLives = getRunState().lives;
+    const remainingLives = loseRunStateLife();
+    devLog('Level1Scene:loseLife', {
+      reason,
+      fromLives: previousLives,
+      toLives: remainingLives,
+    });
 
-    if (lives <= 0) {
-      this.transitionToGameOver();
+    if (remainingLives <= 0) {
+      this.transitionToMenuAfterGameOver();
       return;
     }
 
-    this.player.respawn();
-    this.player.grantInvulnerability(1250);
+    this.transitioning = true;
+    this.player.grantInvulnerability(750);
+    this.cameras.main.flash(140, 255, 110, 110);
     this.statusText.setText(reason);
+    this.time.delayedCall(160, () => {
+      this.scene.restart({ fromDeath: true });
+    });
   }
 
   private tryAdvanceToLevel2(): void {
@@ -215,31 +257,55 @@ export class Level1Scene extends Phaser.Scene {
       return;
     }
 
-    if (this.getParts() < LEVEL1_PARTS_REQUIRED) {
+    const parts = getRunState().partsCollected;
+    if (parts < LEVEL1_PARTS_REQUIRED) {
       this.statusText.setText('Gate locked. Collect more parts first.');
       return;
     }
 
     this.transitioning = true;
+    setLevel(2);
+    devLog('Level1Scene:transition Level1 -> Level2', {
+      activeScenes: activeSceneKeys(this),
+    });
     this.cameras.main.fadeOut(260, 0, 0, 0);
     this.time.delayedCall(280, () => {
-      this.scene.start('Level2Scene');
+      this.time.delayedCall(0, () => {
+        this.scene.start('Level2Scene');
+      });
     });
   }
 
-  private transitionToGameOver(): void {
+  private transitionToMenuAfterGameOver(): void {
     this.transitioning = true;
-    if (this.scene.isActive('UIScene')) {
-      this.scene.stop('UIScene');
+    this.pausedByUser = false;
+    this.physics.world.resume();
+    devLog('Level1Scene:transitionToMenuAfterGameOver', {
+      activeScenes: activeSceneKeys(this),
+    });
+
+    this.time.delayedCall(0, () => {
+      resetRunState();
+      if (this.scene.isActive('UIScene')) {
+        this.scene.stop('UIScene');
+      }
+      this.scene.start('MenuScene');
+    });
+  }
+
+  private togglePause(): void {
+    if (this.transitioning) {
+      return;
     }
-    this.scene.start('GameOverScene');
-  }
 
-  private getLives(): number {
-    return (this.registry.get('lives') as number | undefined) ?? INITIAL_LIVES;
-  }
-
-  private getParts(): number {
-    return (this.registry.get('parts') as number | undefined) ?? 0;
+    this.pausedByUser = !this.pausedByUser;
+    if (this.pausedByUser) {
+      this.player.setAccelerationX(0);
+      this.player.setVelocityX(0);
+      this.physics.world.pause();
+    } else {
+      this.physics.world.resume();
+    }
+    this.pauseText.setVisible(this.pausedByUser);
   }
 }

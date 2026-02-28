@@ -14,4 +14,14 @@ if (!mount) {
   document.body.appendChild(mount);
 }
 
-new Phaser.Game(gameConfig);
+document.body.style.touchAction = 'none';
+
+const game = new Phaser.Game(gameConfig);
+
+if (import.meta.env.DEV) {
+  (
+    window as Window & {
+      __RABBIT_BOY_GAME__?: Phaser.Game;
+    }
+  ).__RABBIT_BOY_GAME__ = game;
+}

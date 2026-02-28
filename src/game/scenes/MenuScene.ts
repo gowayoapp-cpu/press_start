@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { INITIAL_LIVES } from '../config';
+import { devLog } from '../utils/devLog';
+import { resetRunState } from '../utils/runState';
 
 export class MenuScene extends Phaser.Scene {
   private started = false;
@@ -9,6 +10,11 @@ export class MenuScene extends Phaser.Scene {
   }
 
   public create(): void {
+    this.started = false;
+    if (this.scene.isActive('UIScene')) {
+      this.scene.stop('UIScene');
+    }
+
     this.cameras.main.setBackgroundColor('#071220');
     this.addBackgroundStars();
 
@@ -66,15 +72,15 @@ export class MenuScene extends Phaser.Scene {
 
   private startMission(): void {
     if (this.started) {
+      devLog('MenuScene:startMission blocked by started=true');
       return;
     }
     this.started = true;
-    this.registry.set('lives', INITIAL_LIVES);
-    this.registry.set('parts', 0);
-    if (this.scene.isActive('UIScene')) {
-      this.scene.stop('UIScene');
+    devLog('MenuScene:startMission transition to Level1Scene');
+    resetRunState();
+    if (!this.scene.isActive('UIScene')) {
+      this.scene.launch('UIScene');
     }
-    this.scene.launch('UIScene');
     this.scene.start('Level1Scene', { resetProgress: true });
   }
 

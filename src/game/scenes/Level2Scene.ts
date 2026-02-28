@@ -1,10 +1,22 @@
 import Phaser from 'phaser';
-import { INITIAL_LIVES, TOTAL_PARTS_REQUIRED } from '../config';
+import { TOTAL_PARTS_REQUIRED } from '../config';
 import { createControls, type Controls } from '../input/controls';
 import { Collectible } from '../objects/Collectible';
 import { Player } from '../objects/Player';
 import { RocketGoal } from '../objects/RocketGoal';
 import { Robot } from '../objects/Robot';
+import { activeSceneKeys, devLog, devSceneLifecycle } from '../utils/devLog';
+import {
+  addPart,
+  getRunState,
+  loseLife as loseRunStateLife,
+  resetRunState,
+  setLevel,
+} from '../utils/runState';
+
+interface Level2Data {
+  fromDeath?: boolean;
+}
 
 export class Level2Scene extends Phaser.Scene {
   private player!: Player;
@@ -15,16 +27,25 @@ export class Level2Scene extends Phaser.Scene {
   private collectibles!: Phaser.Physics.Arcade.Group;
   private rocket!: RocketGoal;
   private statusText!: Phaser.GameObjects.Text;
+  private pauseText!: Phaser.GameObjects.Text;
   private transitioning = false;
+  private pausedByUser = false;
 
   public constructor() {
     super('Level2Scene');
   }
 
-  public create(): void {
+  public create(data: Level2Data): void {
+    devSceneLifecycle(this, 'create');
     this.transitioning = false;
+    this.pausedByUser = false;
+    setLevel(2);
 
-    const worldWidth = 2700;
+    if (!this.scene.isActive('UIScene')) {
+      this.scene.launch('UIScene');
+    }
+
+    const worldWidth = 2900;
     const worldHeight = this.scale.height;
 
     this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
@@ -42,23 +63,20 @@ export class Level2Scene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.icePlatforms);
 
     this.robots = this.add.group({ runChildUpdate: true });
-    this.spawnRobot(860, 414, 720, 980, 74);
-    this.spawnRobot(1440, 286, 1340, 1580, 65);
-    this.spawnRobot(2100, 334, 1980, 2240, 82);
-    this.spawnRobot(2460, 436, 2320, 2580, 90);
+    this.spawnRobot(860, 414, 700, 1010, 86);
+    this.spawnRobot(1440, 286, 1330, 1600, 74);
+    this.spawnRobot(2060, 334, 1920, 2230, 90);
+    this.spawnRobot(2420, 440, 2280, 2580, 96);
+    this.spawnRobot(2720, 440, 2570, 2840, 108);
 
     this.collectibles = this.physics.add.group();
     this.spawnCollectibles();
 
-    this.rocket = new RocketGoal(this, worldWidth - 98, worldHeight - 120);
+    this.rocket = new RocketGoal(this, worldWidth - 100, worldHeight - 120);
 
-    this.physics.add.overlap(
-      this.player,
-      this.collectibles,
-      (_player, collectible) => {
-        this.collectPart(collectible as Collectible);
-      },
-    );
+    this.physics.add.overlap(this.player, this.collectibles, (_player, collectible) => {
+      this.collectPart(collectible as Collectible);
+    });
     this.physics.add.overlap(this.player, this.robots, () => this.handleRobotCollision());
     this.physics.add.overlap(this.player, this.rocket, () => this.tryLaunchRocket());
 
@@ -66,7 +84,7 @@ export class Level2Scene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
 
     this.statusText = this.add
-      .text(this.scale.width / 2, 62, '', {
+      .text(this.scale.width / 2, 60, '', {
         fontFamily: 'Verdana',
         fontSize: '20px',
         color: '#d6ebff',
@@ -75,19 +93,43 @@ export class Level2Scene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(2001);
 
+    this.pauseText = this.add
+      .text(this.scale.width / 2, this.scale.height / 2, 'Paused', {
+        fontFamily: 'Verdana',
+        fontSize: '46px',
+        color: '#ffffff',
+        stroke: '#11233f',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(2100)
+      .setVisible(false);
+
+    if (data.fromDeath) {
+      this.statusText.setText('Re-entry complete. Try again.');
+    }
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.controls.destroy();
-      this.player.clearInvulnerabilityVisuals();
+      devSceneLifecycle(this, 'shutdown');
+      this.controls?.destroy();
+      if (this.player && this.player.scene) {
+        this.player.clearInvulnerabilityVisuals();
+      }
     });
   }
 
   public update(): void {
-    if (this.transitioning) {
+    const controlsState = this.controls.getState();
+    if (controlsState.pauseJustPressed) {
+      this.togglePause();
+    }
+
+    if (this.transitioning || this.pausedByUser) {
       return;
     }
 
     const onIce = this.isPlayerOnIce();
-    const controlsState = this.controls.getState();
     this.player.move(controlsState.horizontal, onIce);
     if (controlsState.jumpJustPressed) {
       this.player.jump();
@@ -97,7 +139,7 @@ export class Level2Scene extends Phaser.Scene {
       this.loseLife('Lost in the ice fields.');
     }
 
-    const parts = this.getParts();
+    const parts = getRunState().partsCollected;
     const rocketReady = parts >= TOTAL_PARTS_REQUIRED;
     this.rocket.setActivated(rocketReady);
 
@@ -132,11 +174,12 @@ export class Level2Scene extends Phaser.Scene {
     }
 
     this.createPlatform(this.platforms, 520, 408, 240, 24, 'platform');
-    this.createPlatform(this.icePlatforms, 880, 360, 300, 24, 'ice');
-    this.createPlatform(this.platforms, 1200, 308, 220, 24, 'platform');
-    this.createPlatform(this.icePlatforms, 1530, 260, 320, 24, 'ice');
-    this.createPlatform(this.platforms, 1900, 340, 260, 24, 'platform');
-    this.createPlatform(this.icePlatforms, 2230, 456, 320, 24, 'ice');
+    this.createPlatform(this.icePlatforms, 900, 360, 360, 24, 'ice');
+    this.createPlatform(this.platforms, 1280, 308, 220, 24, 'platform');
+    this.createPlatform(this.icePlatforms, 1610, 260, 420, 24, 'ice');
+    this.createPlatform(this.platforms, 1980, 340, 260, 24, 'platform');
+    this.createPlatform(this.icePlatforms, 2320, 456, 420, 24, 'ice');
+    this.createPlatform(this.icePlatforms, 2680, 456, 260, 24, 'ice');
   }
 
   private createPlatform(
@@ -154,10 +197,10 @@ export class Level2Scene extends Phaser.Scene {
   private spawnCollectibles(): void {
     const positions = [
       { x: 560, y: 372 },
-      { x: 900, y: 324 },
-      { x: 1510, y: 226 },
-      { x: 1960, y: 306 },
-      { x: 2340, y: 420 },
+      { x: 980, y: 324 },
+      { x: 1600, y: 226 },
+      { x: 2060, y: 306 },
+      { x: 2460, y: 420 },
     ];
     positions.forEach((position) => {
       const part = new Collectible(this, position.x, position.y);
@@ -179,12 +222,11 @@ export class Level2Scene extends Phaser.Scene {
   }
 
   private collectPart(part: Collectible): void {
-    if (!part.active) {
+    if (!part.active || this.transitioning) {
       return;
     }
     part.collect();
-    const next = Math.min(this.getParts() + 1, TOTAL_PARTS_REQUIRED);
-    this.registry.set('parts', next);
+    addPart();
   }
 
   private handleRobotCollision(): void {
@@ -196,46 +238,85 @@ export class Level2Scene extends Phaser.Scene {
       return;
     }
 
-    const lives = this.getLives() - 1;
-    this.registry.set('lives', lives);
+    const previousLives = getRunState().lives;
+    const remainingLives = loseRunStateLife();
+    devLog('Level2Scene:loseLife', {
+      reason,
+      fromLives: previousLives,
+      toLives: remainingLives,
+    });
 
-    if (lives <= 0) {
-      this.transitionToGameOver();
+    if (remainingLives <= 0) {
+      this.transitionToMenuAfterGameOver();
       return;
     }
 
-    this.player.respawn();
-    this.player.grantInvulnerability(1250);
+    this.transitioning = true;
+    this.player.grantInvulnerability(750);
+    this.cameras.main.flash(140, 255, 110, 110);
     this.statusText.setText(reason);
+    this.time.delayedCall(170, () => {
+      this.scene.restart({ fromDeath: true });
+    });
   }
 
   private tryLaunchRocket(): void {
     if (this.transitioning) {
       return;
     }
+
+    const parts = getRunState().partsCollected;
     if (!this.rocket.isActivated()) {
-      this.statusText.setText(
-        `Rocket needs ${TOTAL_PARTS_REQUIRED - this.getParts()} more part(s).`,
-      );
+      this.statusText.setText(`Rocket needs ${TOTAL_PARTS_REQUIRED - parts} more part(s).`);
       return;
     }
 
     this.transitioning = true;
+    devLog('Level2Scene:transition Level2 -> Win', {
+      activeScenes: activeSceneKeys(this),
+    });
     this.cameras.main.fadeOut(260, 0, 0, 0);
     this.time.delayedCall(280, () => {
-      if (this.scene.isActive('UIScene')) {
-        this.scene.stop('UIScene');
-      }
-      this.scene.start('WinScene');
+      this.time.delayedCall(0, () => {
+        if (this.scene.isActive('UIScene')) {
+          this.scene.stop('UIScene');
+        }
+        this.scene.start('WinScene');
+      });
     });
   }
 
-  private transitionToGameOver(): void {
+  private transitionToMenuAfterGameOver(): void {
     this.transitioning = true;
-    if (this.scene.isActive('UIScene')) {
-      this.scene.stop('UIScene');
+    this.pausedByUser = false;
+    this.physics.world.resume();
+    devLog('Level2Scene:transitionToMenuAfterGameOver', {
+      activeScenes: activeSceneKeys(this),
+    });
+
+    this.time.delayedCall(0, () => {
+      resetRunState();
+      if (this.scene.isActive('UIScene')) {
+        this.scene.stop('UIScene');
+      }
+      this.scene.start('MenuScene');
+    });
+  }
+
+  private togglePause(): void {
+    if (this.transitioning) {
+      return;
     }
-    this.scene.start('GameOverScene');
+
+    this.pausedByUser = !this.pausedByUser;
+    if (this.pausedByUser) {
+      this.player.setAccelerationX(0);
+      this.player.setVelocityX(0);
+      this.physics.world.pause();
+    } else {
+      this.physics.world.resume();
+    }
+    this.pauseText.setVisible(this.pausedByUser);
   }
 
   private isPlayerOnIce(): boolean {
@@ -269,13 +350,5 @@ export class Level2Scene extends Phaser.Scene {
     });
 
     return onIce;
-  }
-
-  private getLives(): number {
-    return (this.registry.get('lives') as number | undefined) ?? INITIAL_LIVES;
-  }
-
-  private getParts(): number {
-    return (this.registry.get('parts') as number | undefined) ?? 0;
   }
 }
