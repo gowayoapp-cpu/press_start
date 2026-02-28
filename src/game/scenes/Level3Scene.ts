@@ -41,7 +41,7 @@ export class Level3Scene extends Phaser.Scene {
   private transitioning = false;
   private pausedByUser = false;
   private levelPartsCollected = 0;
-  private readonly levelPartsTarget = 4;
+  private readonly levelPartsTarget = 3;
 
   public constructor() {
     super('Level3Scene');
@@ -55,6 +55,7 @@ export class Level3Scene extends Phaser.Scene {
     this.time.timeScale = 1;
     this.levelPartsCollected = 0;
     setLevel(3);
+    this.registry.set('hudObjective', '');
     resetPowerupsForLevel();
 
     if (!this.scene.isActive('UIScene')) {
@@ -91,7 +92,7 @@ export class Level3Scene extends Phaser.Scene {
     this.levelParts = this.physics.add.group();
     this.spawnLevelParts();
 
-    this.superJumpItem = new SuperJumpItem(this, 500, 362);
+    this.superJumpItem = new SuperJumpItem(this, 420, 364);
     this.rocket = new RocketGoal(this, worldWidth - 102, 98);
 
     this.physics.add.overlap(this.player, this.floatingGuards, () => this.handleEnemyHit());
@@ -182,8 +183,8 @@ export class Level3Scene extends Phaser.Scene {
           ? 'Super Jump active. Rocket ready!'
           : 'Rocket ready. Reach the launch ridge.'
         : runState.superJumpActive
-          ? `Super Jump active. Parts ${this.levelPartsCollected}/${this.levelPartsTarget}.`
-          : `Collect ${remainingParts} more local part(s).`,
+          ? `Super Jump active. Parts ${this.levelPartsCollected}/${this.levelPartsTarget} ready.`
+          : `Collect ${remainingParts} more part(s) (3 of 5 needed).`,
     );
   }
 
@@ -319,10 +320,11 @@ export class Level3Scene extends Phaser.Scene {
 
   private spawnLevelParts(): void {
     const positions = [
-      { x: 320, y: 368 },
-      { x: 560, y: 352 },
-      { x: 930, y: 306 },
-      { x: 1320, y: 266 },
+      { x: 300, y: 368 },
+      { x: 520, y: 350 },
+      { x: 760, y: 330 },
+      { x: 1240, y: 286 },
+      { x: 1720, y: 236 },
     ];
 
     positions.forEach((position) => {
@@ -366,7 +368,7 @@ export class Level3Scene extends Phaser.Scene {
     part.collect();
     this.levelPartsCollected += 1;
     this.statusText.setText(
-      `Level 3 parts: ${this.levelPartsCollected}/${this.levelPartsTarget}`,
+      `Level 3 parts: ${this.levelPartsCollected}/5 (need ${this.levelPartsTarget})`,
     );
   }
 
@@ -420,16 +422,13 @@ export class Level3Scene extends Phaser.Scene {
     }
 
     this.transitioning = true;
-    devLog('Level3Scene:transition Level3 -> Win', {
+    devLog('Level3Scene:transition Level3 -> Level4', {
       activeScenes: activeSceneKeys(this),
     });
 
     this.cameras.main.fadeOut(260, 0, 0, 0);
     this.time.delayedCall(280, () => {
-      if (this.scene.isActive('UIScene')) {
-        this.scene.stop('UIScene');
-      }
-      this.safeSceneStart('WinScene');
+      this.safeSceneStart('Level4Scene');
     });
   }
 
