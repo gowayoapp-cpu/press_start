@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { getRunState } from '../utils/runState';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private readonly spawnPoint = new Phaser.Math.Vector2();
@@ -46,7 +47,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       return false;
     }
 
-    this.setVelocityY(-440);
+    const jumpVelocity = -440 * getRunState().jumpMultiplier;
+    this.setVelocityY(jumpVelocity);
     return true;
   }
 

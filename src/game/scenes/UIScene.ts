@@ -7,6 +7,7 @@ export class UIScene extends Phaser.Scene {
   private livesText!: Phaser.GameObjects.Text;
   private partsText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
+  private superJumpText!: Phaser.GameObjects.Text;
   private unsubscribeRunState?: () => void;
 
   public constructor() {
@@ -43,6 +44,14 @@ export class UIScene extends Phaser.Scene {
       })
       .setScrollFactor(0)
       .setOrigin(1, 0);
+    this.superJumpText = this.add
+      .text(0, 0, '', {
+        fontFamily: 'Verdana',
+        fontSize: '14px',
+        color: '#fde68a',
+      })
+      .setScrollFactor(0)
+      .setOrigin(1, 0);
 
     const align = () => {
       const width = this.scale.width;
@@ -58,6 +67,9 @@ export class UIScene extends Phaser.Scene {
       this.levelText
         .setFontSize(compact ? '15px' : '18px')
         .setPosition(width - margin, compact ? 8 : 14);
+      this.superJumpText
+        .setFontSize(compact ? '13px' : '14px')
+        .setPosition(width - margin, compact ? 32 : 34);
     };
 
     align();
@@ -79,5 +91,6 @@ export class UIScene extends Phaser.Scene {
       `Cosmic Parts: ${runState.partsCollected}/${TOTAL_PARTS_REQUIRED}`,
     );
     this.levelText.setText(`Level ${runState.currentLevel}`);
+    this.superJumpText.setText(runState.superJumpActive ? 'SJ ON' : '');
   }
 }
