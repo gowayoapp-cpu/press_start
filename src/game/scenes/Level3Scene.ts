@@ -81,8 +81,8 @@ export class Level3Scene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.platforms);
 
     this.floatingGuards = this.add.group({ runChildUpdate: true });
-    this.spawnFloatingGuard(820, 285, 690, 980, 92);
-    this.spawnFloatingGuard(1400, 245, 1270, 1560, 92);
+    this.spawnFloatingGuard(820, 285, 690, 980, 84);
+    this.spawnFloatingGuard(1400, 245, 1270, 1560, 88);
     this.spawnFloatingGuard(2060, 190, 1920, 2230, 112);
     this.spawnFloatingGuard(2710, 145, 2580, 2850, 118);
 
@@ -91,7 +91,7 @@ export class Level3Scene extends Phaser.Scene {
     this.levelParts = this.physics.add.group();
     this.spawnLevelParts();
 
-    this.superJumpItem = new SuperJumpItem(this, 620, 348);
+    this.superJumpItem = new SuperJumpItem(this, 500, 362);
     this.rocket = new RocketGoal(this, worldWidth - 102, 98);
 
     this.physics.add.overlap(this.player, this.floatingGuards, () => this.handleEnemyHit());
@@ -319,10 +319,10 @@ export class Level3Scene extends Phaser.Scene {
 
   private spawnLevelParts(): void {
     const positions = [
-      { x: 360, y: 368 },
-      { x: 690, y: 318 },
-      { x: 1040, y: 282 },
-      { x: 1450, y: 250 },
+      { x: 320, y: 368 },
+      { x: 560, y: 352 },
+      { x: 930, y: 306 },
+      { x: 1320, y: 266 },
     ];
 
     positions.forEach((position) => {
