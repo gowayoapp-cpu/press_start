@@ -39,6 +39,7 @@ export class Level4Scene extends Phaser.Scene {
   private carrots!: Phaser.Physics.Arcade.Group;
   private rocket!: RocketGoal;
   private superJumpItem?: SuperJumpItem;
+  private recoverySuperJumpItem?: SuperJumpItem;
   private statusText!: Phaser.GameObjects.Text;
   private pauseText!: Phaser.GameObjects.Text;
   private pollenEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
@@ -110,6 +111,7 @@ export class Level4Scene extends Phaser.Scene {
     this.spawnCarrots();
 
     this.superJumpItem = new SuperJumpItem(this, 250, 472);
+    this.recoverySuperJumpItem = new SuperJumpItem(this, 2140, 472);
     this.rocket = new RocketGoal(this, worldWidth - 110, 94);
 
     this.physics.add.overlap(this.player, this.levelParts, (_player, part) => {
@@ -128,7 +130,17 @@ export class Level4Scene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.monkeys, () => this.handleMonkeyHit());
     this.physics.add.overlap(this.player, this.rocket, () => this.tryFinishRun());
     if (this.superJumpItem) {
-      this.physics.add.overlap(this.player, this.superJumpItem, () => this.collectSuperJumpItem());
+      this.physics.add.overlap(this.player, this.superJumpItem, () =>
+        this.collectSuperJumpItem(this.superJumpItem, 'Super Jump unlocked! Use the early WAY UP path.'),
+      );
+    }
+    if (this.recoverySuperJumpItem) {
+      this.physics.add.overlap(this.player, this.recoverySuperJumpItem, () =>
+        this.collectSuperJumpItem(
+          this.recoverySuperJumpItem,
+          'STAR = WAY UP! Use the recovery climb route.',
+        ),
+      );
     }
 
     this.controls = createControls(this);
@@ -158,6 +170,7 @@ export class Level4Scene extends Phaser.Scene {
       .setVisible(false);
 
     this.updateObjectiveHud();
+    this.addWayUpMarkers();
     if (data.fromDeath) {
       this.statusText.setText('Try again. Collect 3 parts and 1 log.');
     } else if (data.fromOutOfLives) {
@@ -216,7 +229,7 @@ export class Level4Scene extends Phaser.Scene {
         ? mangoPowerActive
           ? `MANGO POWER! ${mangoSeconds}s. Need P:${partsNeeded} L:${logsNeeded}.`
           : `Collect Parts:${partsNeeded} and Logs:${logsNeeded}.`
-        : 'Grab the Star to jump higher!',
+        : 'Grab a Star for WAY UP!',
     );
   }
 
@@ -276,17 +289,23 @@ export class Level4Scene extends Phaser.Scene {
       this.createPlatform(this.platforms, x, worldHeight - 14, 320, 28, 'platform');
     }
 
-    this.createPlatform(this.platforms, 520, 468, 180, 20, 'platform');
-    this.createPlatform(this.platforms, 700, 430, 170, 20, 'platform');
-    this.createPlatform(this.branchPlatforms, 860, 392, 190, 20, 'branch');
-    this.createPlatform(this.branchPlatforms, 1030, 350, 210, 20, 'branch');
-    this.createPlatform(this.branchPlatforms, 1230, 308, 210, 20, 'branch');
-    this.createPlatform(this.branchPlatforms, 1360, 252, 220, 20, 'branch');
-    this.createPlatform(this.branchPlatforms, 1700, 220, 240, 20, 'branch');
+    this.createPlatform(this.platforms, 450, 486, 180, 20, 'platform');
+    this.createPlatform(this.platforms, 610, 452, 170, 20, 'platform');
+    this.createPlatform(this.platforms, 770, 418, 170, 20, 'platform');
+    this.createPlatform(this.branchPlatforms, 930, 382, 190, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 1090, 348, 210, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 1250, 308, 210, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 1420, 270, 220, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 1700, 232, 240, 20, 'branch');
     this.createPlatform(this.branchPlatforms, 1980, 260, 340, 20, 'branch');
-    this.createPlatform(this.branchPlatforms, 2370, 228, 220, 20, 'branch');
-    this.createPlatform(this.branchPlatforms, 2700, 188, 220, 20, 'branch');
-    this.createPlatform(this.branchPlatforms, 3040, 148, 220, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 2230, 398, 170, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 2360, 356, 170, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 2490, 318, 170, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 2620, 280, 180, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 2750, 244, 200, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 2890, 212, 220, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 3030, 186, 260, 20, 'branch');
+    this.createPlatform(this.branchPlatforms, 3170, 148, 200, 20, 'branch');
   }
 
   private createPlatform(
@@ -331,7 +350,7 @@ export class Level4Scene extends Phaser.Scene {
     const positions = [
       { x: 520, y: 470 },
       { x: 980, y: 314 },
-      { x: 1760, y: 196 },
+      { x: 1760, y: 206 },
       { x: 2480, y: 164 },
     ];
     positions.forEach((position) => {
@@ -343,7 +362,7 @@ export class Level4Scene extends Phaser.Scene {
   private spawnCarrots(): void {
     const positions = [
       { x: 780, y: 462 },
-      { x: 2180, y: 232 },
+      { x: 2260, y: 372 },
     ];
     positions.forEach((position) => {
       const carrot = new Carrot(this, position.x, position.y);
@@ -413,16 +432,47 @@ export class Level4Scene extends Phaser.Scene {
     );
   }
 
-  private collectSuperJumpItem(): void {
-    if (!this.superJumpItem || !this.superJumpItem.active || this.transitioning) {
+  private collectSuperJumpItem(item: SuperJumpItem | undefined, message: string): void {
+    if (!item || !item.active || this.transitioning) {
       return;
     }
 
-    this.superJumpItem.collect();
+    item.collect();
     this.starCollected = true;
     enableSuperJump(SUPER_JUMP_MULTIPLIER);
     this.cameras.main.flash(150, 255, 220, 95);
-    this.statusText.setText('Super Jump unlocked! Follow the branch steps up.');
+    this.statusText.setText(message);
+  }
+
+  private addWayUpMarkers(): void {
+    const earlyMarker = this.add
+      .text(600, 474, 'WAY UP ->', {
+        fontFamily: 'Verdana',
+        fontSize: '18px',
+        color: '#fff7a8',
+        stroke: '#30512b',
+        strokeThickness: 3,
+      })
+      .setDepth(16);
+
+    const recoveryMarker = this.add
+      .text(2080, 474, 'STAR = WAY UP!', {
+        fontFamily: 'Verdana',
+        fontSize: '18px',
+        color: '#ffe8a3',
+        stroke: '#2d4f28',
+        strokeThickness: 3,
+      })
+      .setDepth(16);
+
+    this.tweens.add({
+      targets: [earlyMarker, recoveryMarker],
+      alpha: 0.35,
+      yoyo: true,
+      repeat: -1,
+      duration: 760,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   private collectCarrot(carrot: Carrot): void {
