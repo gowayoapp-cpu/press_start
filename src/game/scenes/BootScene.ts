@@ -128,6 +128,68 @@ export class BootScene extends Phaser.Scene {
       g.destroy();
     }
 
+    if (!this.textures.exists('mango')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xf59e0b, 1);
+      g.fillEllipse(12, 12, 22, 16);
+      g.fillStyle(0xfde68a, 0.7);
+      g.fillEllipse(8, 10, 6, 4);
+      g.fillStyle(0x1f9d52, 1);
+      g.fillRoundedRect(10, 1, 3, 5, 2);
+      g.fillTriangle(12, 2, 17, 5, 13, 8);
+      g.generateTexture('mango', 24, 24);
+      g.destroy();
+    }
+
+    if (!this.textures.exists('tree_log')) {
+      const g = this.add.graphics();
+      g.fillStyle(0x6b4226, 1);
+      g.fillRoundedRect(0, 2, 40, 14, 7);
+      g.lineStyle(2, 0x8b5d3a, 1);
+      g.strokeRoundedRect(0, 2, 40, 14, 7);
+      g.fillStyle(0x9d724a, 1);
+      g.fillCircle(5, 9, 3);
+      g.fillCircle(35, 9, 3);
+      g.generateTexture('tree_log', 40, 18);
+      g.destroy();
+    }
+
+    if (!this.textures.exists('monkey')) {
+      const g = this.add.graphics();
+      g.fillStyle(0x7c4a2b, 1);
+      g.fillRoundedRect(4, 8, 28, 16, 8);
+      g.fillStyle(0x5b351f, 1);
+      g.fillRoundedRect(10, 2, 16, 12, 7);
+      g.fillStyle(0xf6d4b0, 1);
+      g.fillCircle(18, 11, 4);
+      g.fillCircle(14, 9, 2);
+      g.fillCircle(22, 9, 2);
+      g.fillStyle(0x2a1710, 1);
+      g.fillCircle(15, 10, 1);
+      g.fillCircle(21, 10, 1);
+      g.fillRect(17, 13, 2, 2);
+      g.generateTexture('monkey', 36, 28);
+      g.destroy();
+    }
+
+    if (!this.textures.exists('branch')) {
+      const g = this.add.graphics();
+      g.fillStyle(0x4a3223, 1);
+      g.fillRoundedRect(0, 0, 64, 20, 8);
+      g.fillStyle(0x5e3e2a, 1);
+      g.fillRect(0, 0, 64, 4);
+      g.lineStyle(1, 0x6f4a33, 0.8);
+      g.beginPath();
+      g.moveTo(8, 13);
+      g.lineTo(20, 9);
+      g.lineTo(30, 12);
+      g.lineTo(44, 8);
+      g.lineTo(56, 12);
+      g.strokePath();
+      g.generateTexture('branch', 64, 20);
+      g.destroy();
+    }
+
     if (!this.textures.exists('super_jump_item')) {
       const g = this.add.graphics();
       g.fillStyle(0xf8d74b, 1);
@@ -195,6 +257,14 @@ export class BootScene extends Phaser.Scene {
       g.fillStyle(0x9ca3af, 0.85);
       g.fillCircle(4, 4, 4);
       g.generateTexture('smoke_dot', 8, 8);
+      g.destroy();
+    }
+
+    if (!this.textures.exists('pollen_dot')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xfef3c7, 0.95);
+      g.fillCircle(3, 3, 3);
+      g.generateTexture('pollen_dot', 6, 6);
       g.destroy();
     }
 

@@ -11,7 +11,7 @@ export interface RunState {
   lives: number;
   maxLives: number;
   partsCollected: number;
-  currentLevel: 1 | 2 | 3;
+  currentLevel: 1 | 2 | 3 | 4;
   jumpMultiplier: number;
   superJumpActive: boolean;
 }
@@ -56,9 +56,14 @@ export function resetRunState(): RunState {
 }
 
 export function loseLife(): number {
+  return loseLives(1);
+}
+
+export function loseLives(amount = 1): number {
+  const safeAmount = Math.max(1, Math.floor(amount));
   state = {
     ...state,
-    lives: Math.max(0, state.lives - 1),
+    lives: Math.max(0, state.lives - safeAmount),
   };
   emitStateChange();
   return state.lives;
@@ -91,7 +96,7 @@ export function addPart(amount = 1): number {
   return state.partsCollected;
 }
 
-export function setLevel(level: 1 | 2 | 3): void {
+export function setLevel(level: 1 | 2 | 3 | 4): void {
   if (state.currentLevel === level) {
     return;
   }
@@ -103,7 +108,7 @@ export function setLevel(level: 1 | 2 | 3): void {
   emitStateChange();
 }
 
-export function restartLevelFromBeginning(level: 1 | 2 | 3): RunState {
+export function restartLevelFromBeginning(level: 1 | 2 | 3 | 4): RunState {
   const basePartsForLevel =
     level === 1 ? 0 : level === 2 ? LEVEL1_PARTS_REQUIRED : TOTAL_PARTS_REQUIRED;
 

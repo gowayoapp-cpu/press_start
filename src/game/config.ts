@@ -12,6 +12,7 @@ import { GameOverScene } from './scenes/GameOverScene';
 import { Level1Scene } from './scenes/Level1Scene';
 import { Level2Scene } from './scenes/Level2Scene';
 import { Level3Scene } from './scenes/Level3Scene';
+import { Level4Scene } from './scenes/Level4Scene';
 import { MenuScene } from './scenes/MenuScene';
 import { UIScene } from './scenes/UIScene';
 import { WinScene } from './scenes/WinScene';
@@ -54,6 +55,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     Level1Scene,
     Level2Scene,
     Level3Scene,
+    Level4Scene,
     UIScene,
     GameOverScene,
     WinScene,
