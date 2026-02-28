@@ -277,12 +277,10 @@ export class Level2Scene extends Phaser.Scene {
     });
     this.cameras.main.fadeOut(260, 0, 0, 0);
     this.time.delayedCall(280, () => {
-      this.time.delayedCall(0, () => {
-        if (this.scene.isActive('UIScene')) {
-          this.scene.stop('UIScene');
-        }
-        this.scene.start('WinScene');
-      });
+      if (this.scene.isActive('UIScene')) {
+        this.scene.stop('UIScene');
+      }
+      this.safeSceneStart('WinScene');
     });
   }
 
@@ -299,7 +297,7 @@ export class Level2Scene extends Phaser.Scene {
       if (this.scene.isActive('UIScene')) {
         this.scene.stop('UIScene');
       }
-      this.scene.start('MenuScene');
+      this.safeSceneStart('MenuScene');
     });
   }
 
@@ -350,5 +348,16 @@ export class Level2Scene extends Phaser.Scene {
     });
 
     return onIce;
+  }
+
+  private safeSceneStart(nextKey: string): void {
+    const active = activeSceneKeys(this);
+    devLog('Level2Scene:safeSceneStart', {
+      nextKey,
+      activeScenes: active,
+    });
+    this.time.delayedCall(0, () => {
+      this.scene.start(nextKey);
+    });
   }
 }

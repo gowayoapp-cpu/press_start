@@ -270,9 +270,7 @@ export class Level1Scene extends Phaser.Scene {
     });
     this.cameras.main.fadeOut(260, 0, 0, 0);
     this.time.delayedCall(280, () => {
-      this.time.delayedCall(0, () => {
-        this.scene.start('Level2Scene');
-      });
+      this.safeSceneStart('Level2Scene');
     });
   }
 
@@ -289,7 +287,7 @@ export class Level1Scene extends Phaser.Scene {
       if (this.scene.isActive('UIScene')) {
         this.scene.stop('UIScene');
       }
-      this.scene.start('MenuScene');
+      this.safeSceneStart('MenuScene');
     });
   }
 
@@ -307,5 +305,16 @@ export class Level1Scene extends Phaser.Scene {
       this.physics.world.resume();
     }
     this.pauseText.setVisible(this.pausedByUser);
+  }
+
+  private safeSceneStart(nextKey: string): void {
+    const active = activeSceneKeys(this);
+    devLog('Level1Scene:safeSceneStart', {
+      nextKey,
+      activeScenes: active,
+    });
+    this.time.delayedCall(0, () => {
+      this.scene.start(nextKey);
+    });
   }
 }
