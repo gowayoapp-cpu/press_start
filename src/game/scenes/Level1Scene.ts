@@ -1,15 +1,18 @@
 import Phaser from 'phaser';
 import { LEVEL1_PARTS_REQUIRED } from '../config';
 import { createControls, type Controls } from '../input/controls';
+import { Carrot } from '../objects/Carrot';
 import { Collectible } from '../objects/Collectible';
 import { Player } from '../objects/Player';
 import { Robot } from '../objects/Robot';
 import { activeSceneKeys, devLog, devSceneLifecycle } from '../utils/devLog';
 import {
+  addLife,
   addPart,
   getRunState,
   loseLife as loseRunStateLife,
   resetRunState,
+  resetPowerupsForLevel,
   setLevel,
 } from '../utils/runState';
 
@@ -24,6 +27,7 @@ export class Level1Scene extends Phaser.Scene {
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private robots!: Phaser.GameObjects.Group;
   private collectibles!: Phaser.Physics.Arcade.Group;
+  private carrots!: Phaser.Physics.Arcade.Group;
   private exitGate!: Phaser.Physics.Arcade.Sprite;
   private statusText!: Phaser.GameObjects.Text;
   private pauseText!: Phaser.GameObjects.Text;
@@ -43,6 +47,7 @@ export class Level1Scene extends Phaser.Scene {
       resetRunState();
     }
     setLevel(1);
+    resetPowerupsForLevel();
 
     if (!this.scene.isActive('UIScene')) {
       this.scene.launch('UIScene');
@@ -70,6 +75,8 @@ export class Level1Scene extends Phaser.Scene {
 
     this.collectibles = this.physics.add.group();
     this.spawnCollectibles();
+    this.carrots = this.physics.add.group();
+    this.spawnCarrots();
 
     this.exitGate = this.physics.add
       .staticSprite(worldWidth - 120, worldHeight - 102, 'gate_closed')
@@ -77,6 +84,9 @@ export class Level1Scene extends Phaser.Scene {
 
     this.physics.add.overlap(this.player, this.collectibles, (_player, collectible) => {
       this.collectPart(collectible as Collectible);
+    });
+    this.physics.add.overlap(this.player, this.carrots, (_player, carrot) => {
+      this.collectCarrot(carrot as Carrot);
     });
     this.physics.add.overlap(this.player, this.robots, () => this.handleRobotCollision());
     this.physics.add.overlap(this.player, this.exitGate, () => this.tryAdvanceToLevel2());
@@ -200,6 +210,18 @@ export class Level1Scene extends Phaser.Scene {
     });
   }
 
+  private spawnCarrots(): void {
+    const positions = [
+      { x: 500, y: 372 },
+      { x: 1480, y: 220 },
+    ];
+
+    positions.forEach((position) => {
+      const carrot = new Carrot(this, position.x, position.y);
+      this.carrots.add(carrot);
+    });
+  }
+
   private spawnRobot(
     x: number,
     y: number,
@@ -219,6 +241,19 @@ export class Level1Scene extends Phaser.Scene {
 
     part.collect();
     addPart();
+  }
+
+  private collectCarrot(carrot: Carrot): void {
+    if (!carrot.active || this.transitioning) {
+      return;
+    }
+
+    const previousLives = getRunState().lives;
+    const nextLives = addLife(1);
+    carrot.collect();
+    this.statusText.setText(
+      nextLives > previousLives ? 'Carrot collected: +1 life!' : 'Carrot collected: lives full.',
+    );
   }
 
   private handleRobotCollision(): void {

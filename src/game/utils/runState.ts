@@ -1,18 +1,29 @@
 import Phaser from 'phaser';
-import { INITIAL_LIVES, TOTAL_PARTS_REQUIRED } from '../constants';
+import {
+  BASE_JUMP_MULTIPLIER,
+  INITIAL_LIVES,
+  MAX_LIVES,
+  TOTAL_PARTS_REQUIRED,
+} from '../constants';
 
 export interface RunState {
   lives: number;
+  maxLives: number;
   partsCollected: number;
-  currentLevel: 1 | 2;
+  currentLevel: 1 | 2 | 3;
+  jumpMultiplier: number;
+  superJumpActive: boolean;
 }
 
 const events = new Phaser.Events.EventEmitter();
 
 let state: RunState = {
   lives: INITIAL_LIVES,
+  maxLives: MAX_LIVES,
   partsCollected: 0,
   currentLevel: 1,
+  jumpMultiplier: BASE_JUMP_MULTIPLIER,
+  superJumpActive: false,
 };
 
 export function getRunState(): RunState {
@@ -33,8 +44,11 @@ function emitStateChange(): void {
 export function resetRunState(): RunState {
   state = {
     lives: INITIAL_LIVES,
+    maxLives: MAX_LIVES,
     partsCollected: 0,
     currentLevel: 1,
+    jumpMultiplier: BASE_JUMP_MULTIPLIER,
+    superJumpActive: false,
   };
   emitStateChange();
   return getRunState();
@@ -49,6 +63,15 @@ export function loseLife(): number {
   return state.lives;
 }
 
+export function addLife(amount = 1): number {
+  state = {
+    ...state,
+    lives: Phaser.Math.Clamp(state.lives + amount, 0, state.maxLives),
+  };
+  emitStateChange();
+  return state.lives;
+}
+
 export function addPart(amount = 1): number {
   state = {
     ...state,
@@ -58,7 +81,7 @@ export function addPart(amount = 1): number {
   return state.partsCollected;
 }
 
-export function setLevel(level: 1 | 2): void {
+export function setLevel(level: 1 | 2 | 3): void {
   if (state.currentLevel === level) {
     return;
   }
@@ -66,6 +89,28 @@ export function setLevel(level: 1 | 2): void {
   state = {
     ...state,
     currentLevel: level,
+  };
+  emitStateChange();
+}
+
+export function enableSuperJump(multiplier: number): void {
+  state = {
+    ...state,
+    jumpMultiplier: Math.max(BASE_JUMP_MULTIPLIER, multiplier),
+    superJumpActive: true,
+  };
+  emitStateChange();
+}
+
+export function resetPowerupsForLevel(): void {
+  if (state.jumpMultiplier === BASE_JUMP_MULTIPLIER && !state.superJumpActive) {
+    return;
+  }
+
+  state = {
+    ...state,
+    jumpMultiplier: BASE_JUMP_MULTIPLIER,
+    superJumpActive: false,
   };
   emitStateChange();
 }

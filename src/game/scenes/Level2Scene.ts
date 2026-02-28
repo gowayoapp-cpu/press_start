@@ -1,16 +1,19 @@
 import Phaser from 'phaser';
 import { TOTAL_PARTS_REQUIRED } from '../config';
 import { createControls, type Controls } from '../input/controls';
+import { Carrot } from '../objects/Carrot';
 import { Collectible } from '../objects/Collectible';
 import { Player } from '../objects/Player';
 import { RocketGoal } from '../objects/RocketGoal';
 import { Robot } from '../objects/Robot';
 import { activeSceneKeys, devLog, devSceneLifecycle } from '../utils/devLog';
 import {
+  addLife,
   addPart,
   getRunState,
   loseLife as loseRunStateLife,
   resetRunState,
+  resetPowerupsForLevel,
   setLevel,
 } from '../utils/runState';
 
@@ -25,6 +28,7 @@ export class Level2Scene extends Phaser.Scene {
   private icePlatforms!: Phaser.Physics.Arcade.StaticGroup;
   private robots!: Phaser.GameObjects.Group;
   private collectibles!: Phaser.Physics.Arcade.Group;
+  private carrots!: Phaser.Physics.Arcade.Group;
   private rocket!: RocketGoal;
   private statusText!: Phaser.GameObjects.Text;
   private pauseText!: Phaser.GameObjects.Text;
@@ -40,6 +44,7 @@ export class Level2Scene extends Phaser.Scene {
     this.transitioning = false;
     this.pausedByUser = false;
     setLevel(2);
+    resetPowerupsForLevel();
 
     if (!this.scene.isActive('UIScene')) {
       this.scene.launch('UIScene');
@@ -71,11 +76,16 @@ export class Level2Scene extends Phaser.Scene {
 
     this.collectibles = this.physics.add.group();
     this.spawnCollectibles();
+    this.carrots = this.physics.add.group();
+    this.spawnCarrots();
 
     this.rocket = new RocketGoal(this, worldWidth - 100, worldHeight - 120);
 
     this.physics.add.overlap(this.player, this.collectibles, (_player, collectible) => {
       this.collectPart(collectible as Collectible);
+    });
+    this.physics.add.overlap(this.player, this.carrots, (_player, carrot) => {
+      this.collectCarrot(carrot as Carrot);
     });
     this.physics.add.overlap(this.player, this.robots, () => this.handleRobotCollision());
     this.physics.add.overlap(this.player, this.rocket, () => this.tryLaunchRocket());
@@ -145,7 +155,7 @@ export class Level2Scene extends Phaser.Scene {
 
     this.statusText.setText(
       rocketReady
-        ? 'Rocket online. Reach it to win!'
+        ? 'Rocket online. Reach it to enter Volcano Rift.'
         : `Rocket locked. Need ${TOTAL_PARTS_REQUIRED - parts} more part(s).`,
     );
   }
@@ -208,6 +218,17 @@ export class Level2Scene extends Phaser.Scene {
     });
   }
 
+  private spawnCarrots(): void {
+    const positions = [
+      { x: 940, y: 322 },
+      { x: 1990, y: 302 },
+    ];
+    positions.forEach((position) => {
+      const carrot = new Carrot(this, position.x, position.y);
+      this.carrots.add(carrot);
+    });
+  }
+
   private spawnRobot(
     x: number,
     y: number,
@@ -227,6 +248,19 @@ export class Level2Scene extends Phaser.Scene {
     }
     part.collect();
     addPart();
+  }
+
+  private collectCarrot(carrot: Carrot): void {
+    if (!carrot.active || this.transitioning) {
+      return;
+    }
+
+    const previousLives = getRunState().lives;
+    const nextLives = addLife(1);
+    carrot.collect();
+    this.statusText.setText(
+      nextLives > previousLives ? 'Carrot collected: +1 life!' : 'Carrot collected: lives full.',
+    );
   }
 
   private handleRobotCollision(): void {
@@ -272,15 +306,13 @@ export class Level2Scene extends Phaser.Scene {
     }
 
     this.transitioning = true;
-    devLog('Level2Scene:transition Level2 -> Win', {
+    devLog('Level2Scene:transition Level2 -> Level3', {
       activeScenes: activeSceneKeys(this),
     });
     this.cameras.main.fadeOut(260, 0, 0, 0);
     this.time.delayedCall(280, () => {
-      if (this.scene.isActive('UIScene')) {
-        this.scene.stop('UIScene');
-      }
-      this.safeSceneStart('WinScene');
+      setLevel(3);
+      this.safeSceneStart('Level3Scene');
     });
   }
 
