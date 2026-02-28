@@ -262,9 +262,10 @@ export class Level2Scene extends Phaser.Scene {
 
       if (topMatch && horizontalMatch) {
         onIce = true;
+        return false;
       }
 
-      return false;
+      return true;
     });
 
     return onIce;
