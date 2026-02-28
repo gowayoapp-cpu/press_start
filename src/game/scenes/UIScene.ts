@@ -47,14 +47,17 @@ export class UIScene extends Phaser.Scene {
     const align = () => {
       const width = this.scale.width;
       const margin = Math.max(12, Math.round(width * 0.014));
-      const fontSize = width <= 480 ? '16px' : '21px';
+      const compact = width <= 520;
+      const fontSize = compact ? '16px' : '21px';
 
-      this.panel.setSize(width, width <= 480 ? 52 : 56);
-      this.livesText.setFontSize(fontSize).setPosition(margin, 12);
-      this.partsText.setFontSize(fontSize).setPosition(margin + 160, 12);
+      this.panel.setSize(width, compact ? 68 : 56);
+      this.livesText.setFontSize(fontSize).setPosition(margin, compact ? 8 : 12);
+      this.partsText
+        .setFontSize(fontSize)
+        .setPosition(compact ? margin : margin + 160, compact ? 34 : 12);
       this.levelText
-        .setFontSize(width <= 480 ? '15px' : '18px')
-        .setPosition(width - margin, 14);
+        .setFontSize(compact ? '15px' : '18px')
+        .setPosition(width - margin, compact ? 8 : 14);
     };
 
     align();

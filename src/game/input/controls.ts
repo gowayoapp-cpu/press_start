@@ -115,7 +115,8 @@ export function createControls(scene: Phaser.Scene): Controls {
     const width = scene.scale.width;
     const height = scene.scale.height;
     const baseMargin = Math.max(14, Math.round(Math.min(width, height) * 0.03));
-    const bottom = height - (controlRadius + baseMargin);
+    const compactLayout = width <= 480;
+    const bottom = height - (controlRadius + baseMargin + (compactLayout ? 10 : 0));
     const horizontalGap = Math.round(controlRadius * 0.72);
 
     const leftX = controlRadius + baseMargin;
@@ -171,6 +172,7 @@ export function createControls(scene: Phaser.Scene): Controls {
   alignButtons();
   scene.input.on('pointerup', releasePointer);
   scene.input.on('pointerupoutside', releasePointer);
+  scene.input.on('pointercancel', releasePointer);
   scene.input.on('gameout', clearTouchState);
   scene.scale.on(Phaser.Scale.Events.RESIZE, alignButtons);
 
@@ -214,6 +216,7 @@ export function createControls(scene: Phaser.Scene): Controls {
   const destroy = (): void => {
     scene.input.off('pointerup', releasePointer);
     scene.input.off('pointerupoutside', releasePointer);
+    scene.input.off('pointercancel', releasePointer);
     scene.input.off('gameout', clearTouchState);
     scene.scale.off(Phaser.Scale.Events.RESIZE, alignButtons);
     layer.destroy(true);

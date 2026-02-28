@@ -64,7 +64,7 @@ export class Level2Scene extends Phaser.Scene {
 
     this.robots = this.add.group({ runChildUpdate: true });
     this.spawnRobot(860, 414, 700, 1010, 86);
-    this.spawnRobot(1440, 286, 1330, 1600, 74);
+    this.spawnRobot(1440, 286, 1330, 1600, 78);
     this.spawnRobot(2060, 334, 1920, 2230, 90);
     this.spawnRobot(2420, 440, 2280, 2580, 96);
     this.spawnRobot(2720, 440, 2570, 2840, 108);
@@ -177,7 +177,7 @@ export class Level2Scene extends Phaser.Scene {
     this.createPlatform(this.icePlatforms, 900, 360, 360, 24, 'ice');
     this.createPlatform(this.platforms, 1280, 308, 220, 24, 'platform');
     this.createPlatform(this.icePlatforms, 1610, 260, 420, 24, 'ice');
-    this.createPlatform(this.platforms, 1980, 340, 260, 24, 'platform');
+    this.createPlatform(this.platforms, 1980, 340, 220, 24, 'platform');
     this.createPlatform(this.icePlatforms, 2320, 456, 420, 24, 'ice');
     this.createPlatform(this.icePlatforms, 2680, 456, 260, 24, 'ice');
   }
