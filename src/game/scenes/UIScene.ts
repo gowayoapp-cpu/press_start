@@ -8,6 +8,8 @@ export class UIScene extends Phaser.Scene {
   private partsText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
   private superJumpText!: Phaser.GameObjects.Text;
+  private objectiveText!: Phaser.GameObjects.Text;
+  private objectiveHint = '';
   private unsubscribeRunState?: () => void;
 
   public constructor() {
@@ -52,6 +54,14 @@ export class UIScene extends Phaser.Scene {
       })
       .setScrollFactor(0)
       .setOrigin(1, 0);
+    this.objectiveText = this.add
+      .text(0, 0, '', {
+        fontFamily: 'Verdana',
+        fontSize: '14px',
+        color: '#d8f7d8',
+      })
+      .setScrollFactor(0)
+      .setOrigin(0.5, 0);
 
     const align = () => {
       const width = this.scale.width;
@@ -59,7 +69,7 @@ export class UIScene extends Phaser.Scene {
       const compact = width <= 520;
       const fontSize = compact ? '16px' : '21px';
 
-      this.panel.setSize(width, compact ? 68 : 56);
+      this.panel.setSize(width, compact ? 82 : 74);
       this.livesText.setFontSize(fontSize).setPosition(margin, compact ? 8 : 12);
       this.partsText
         .setFontSize(fontSize)
@@ -70,6 +80,9 @@ export class UIScene extends Phaser.Scene {
       this.superJumpText
         .setFontSize(compact ? '13px' : '14px')
         .setPosition(width - margin, compact ? 32 : 34);
+      this.objectiveText
+        .setFontSize(compact ? '12px' : '14px')
+        .setPosition(width / 2, compact ? 56 : 50);
     };
 
     align();
@@ -77,9 +90,13 @@ export class UIScene extends Phaser.Scene {
 
     this.refresh(getRunState());
     this.unsubscribeRunState = subscribeRunState((next) => this.refresh(next));
+    this.objectiveHint = `${this.registry.get('hudObjective') ?? ''}`;
+    this.refreshObjective();
+    this.registry.events.on('changedata-hudObjective', this.onHudObjectiveChange, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, align);
+      this.registry.events.off('changedata-hudObjective', this.onHudObjectiveChange, this);
       this.unsubscribeRunState?.();
       this.unsubscribeRunState = undefined;
     });
@@ -92,5 +109,18 @@ export class UIScene extends Phaser.Scene {
     );
     this.levelText.setText(`Level ${runState.currentLevel}`);
     this.superJumpText.setText(runState.superJumpActive ? 'SJ ON' : '');
+    this.refreshObjective();
+  }
+
+  private onHudObjectiveChange(
+    _parent: Phaser.Data.DataManager,
+    value: unknown,
+  ): void {
+    this.objectiveHint = typeof value === 'string' ? value : '';
+    this.refreshObjective();
+  }
+
+  private refreshObjective(): void {
+    this.objectiveText.setText(this.objectiveHint);
   }
 }

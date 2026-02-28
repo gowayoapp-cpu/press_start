@@ -11,6 +11,7 @@ export class MenuScene extends Phaser.Scene {
 
   public create(): void {
     this.started = false;
+    this.registry.set('hudObjective', '');
     if (this.scene.isActive('UIScene')) {
       this.scene.stop('UIScene');
     }

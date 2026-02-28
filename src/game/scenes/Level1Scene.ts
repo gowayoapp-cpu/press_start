@@ -51,6 +51,7 @@ export class Level1Scene extends Phaser.Scene {
       resetRunState();
     }
     setLevel(1);
+    this.registry.set('hudObjective', '');
     resetPowerupsForLevel();
 
     if (!this.scene.isActive('UIScene')) {

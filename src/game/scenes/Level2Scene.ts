@@ -47,6 +47,7 @@ export class Level2Scene extends Phaser.Scene {
     this.physics.world.resume();
     this.time.timeScale = 1;
     setLevel(2);
+    this.registry.set('hudObjective', '');
     resetPowerupsForLevel();
 
     if (!this.scene.isActive('UIScene')) {
